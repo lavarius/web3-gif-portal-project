@@ -7,14 +7,15 @@ const TWITTER_HANDLE = '_buildspace';
 const TWITTER_LINK = `https://twitter.com/${TWITTER_HANDLE}`;
 
 const TEST_GIFS = [
-  'https://tenor.com/view/poodle-dancing-dog-poodle-dancing-dog-nokka-gif-6046152088505723789',
-  'https://tenor.com/view/dance-dancing-dancing-cat-cat-cat-dance-gif-4990417705814603993',
-  'https://tenor.com/view/star-wars-day-grogu-may-the-4th-be-with-you-may-4th-may-the-fourth-be-with-you-gif-18348782272599481920',
-  'https://giphy.com/gifs/xT0Cyhi8GCSU91PvtC'
+  'https://media1.tenor.com/m/U-g_SmVeq40AAAAC/poodle-dancing-dog-poodle.gif',
+  'https://media1.tenor.com/m/RUGGdovmONkAAAAd/dance-dancing.gif',
+  'https://media1.tenor.com/m/_qP4QstG3kAAAAAC/star-wars-day-grogu.gif',
+'https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExZGZoNGgzbXlrc2Q1aDZtdnhmeTVtNnBnbjE4d3J0anV2OGdsejVqbiZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/xT0Cyhi8GCSU91PvtC/giphy.gif'
    ]
 
 const App = () => {
   const [walletAddress, setWalletAddress] = useState(null)
+  const [inputValue, setInputValue] = useState('')
   const checkIfWalletIsConnected = async() => {
     try {
       const {solana} = window;
@@ -43,6 +44,18 @@ const App = () => {
     }
   }
 
+  const sendGif = async() => {
+    if (inputValue.length > 0) {
+      console.log('gif link:', inputValue)
+    } else {
+      console.log('Empty input. Try again.')
+    }
+  }
+  const onInputChange = event => {
+    const {value} = event.target;
+    setInputValue(value)
+  }
+
   const renderNotConnectedContainer = () => (
     <button
       className="cta-button connect-wallet-button"
@@ -56,9 +69,9 @@ const App = () => {
         <form
           onSubmit={event => {
             event.preventDefault()
-            // sendGif();
+            sendGif()
           }}>
-          <input type="text" placeholder="Enter gif link!" />
+          <input type="text" placeholder="Enter gif link!" value={inputValue} onChange={onInputChange} />
           <button type="submit" className="cta-button submit-gif-button">Submit</button>
 
         </form>
