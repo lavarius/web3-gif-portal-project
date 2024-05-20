@@ -1,42 +1,54 @@
-import React, {useEffect, useState} from 'react';
+import { Connection, PublicKey, clusterApiUrl } from '@solana/web3.js';
+import { Program, AnchorProvider, web3 } from '@coral-xyz/anchor';
+import React, { useEffect, useState } from 'react';
 import twitterLogo from './assets/twitter-logo.svg';
 import './App.css';
+import idl from './idl.json';
 
+const { SystemProgram, Keypair } = web3;
+let baseAccount = Keypair.generate();
+
+const programID = new PublicKey(idl.metadata.address);
+const network = clusterApiUrl('devnet');
+const opts = {
+  preflightCommitment: 'processed'
+}
 // Constants
 const TWITTER_HANDLE = '_buildspace';
 const TWITTER_LINK = `https://twitter.com/${TWITTER_HANDLE}`;
 
 const TEST_GIFS = [
+  'https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExZGZoNGgzbXlrc2Q1aDZtdnhmeTVtNnBnbjE4d3J0anV2OGdsejVqbiZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/xT0Cyhi8GCSU91PvtC/giphy.gif',
   'https://media1.tenor.com/m/U-g_SmVeq40AAAAC/poodle-dancing-dog-poodle.gif',
   'https://media1.tenor.com/m/RUGGdovmONkAAAAd/dance-dancing.gif',
-  'https://media1.tenor.com/m/_qP4QstG3kAAAAAC/star-wars-day-grogu.gif',
-'https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExZGZoNGgzbXlrc2Q1aDZtdnhmeTVtNnBnbjE4d3J0anV2OGdsejVqbiZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/xT0Cyhi8GCSU91PvtC/giphy.gif'
-   ]
+
+]
 
 const App = () => {
   const [walletAddress, setWalletAddress] = useState(null)
   const [inputValue, setInputValue] = useState('')
-  const checkIfWalletIsConnected = async() => {
+  const [gifList, setGifList] = useState([])
+  const checkIfWalletIsConnected = async () => {
     try {
-      const {solana} = window;
+      const { solana } = window;
       if (solana) {
         if (solana.isPhantom) {
           console.log('Phantom wallet found!')
 
-          const response = await solana.connect({onlyIfTrusted: true})
+          const response = await solana.connect({ onlyIfTrusted: true })
           console.log('Connected with Public Key:', response.publicKey.toString())
           setWalletAddress(response.publicKey.toString())
         }
       } else {
         alert('Solana object not found! Get a Phantom Wallet 👻')
       }
-    } catch(error) {
+    } catch (error) {
       console.error(error)
     }
   }
 
-  const connectWallet = async() => {
-    const {solana} = window;
+  const connectWallet = async () => {
+    const { solana } = window;
     if (solana) {
       const response = await solana.connect()
       console.log('Connected with Public Key:', response.publicKey.toString())
@@ -44,16 +56,31 @@ const App = () => {
     }
   }
 
-  const sendGif = async() => {
+  const sendGif = async () => {
     if (inputValue.length > 0) {
       console.log('gif link:', inputValue)
+      setGifList([...gifList, inputValue])
+      setInputValue('')
     } else {
       console.log('Empty input. Try again.')
     }
   }
   const onInputChange = event => {
-    const {value} = event.target;
+    const { value } = event.target;
     setInputValue(value)
+  }
+
+  const getProvider = () => {
+    // const connection = new Connection(clusterApiUrl('devnet'), 'confirmed');
+    // const provider = new Provider(
+    //   connection, window.solana,
+    //   { preflightCommitment: 'confirmed' },
+    // )
+    const connection = new Connection(network, opts.preflightCommitment)
+    const provider = new AnchorProvider(
+      connection, window.solana, opts.preflightCommitment,
+    )
+    return provider
   }
 
   const renderNotConnectedContainer = () => (
@@ -65,36 +92,58 @@ const App = () => {
   )
 
   const renderConnectedContainer = () => (
-      <div className="connected-container">
-        <form
-          onSubmit={event => {
-            event.preventDefault()
-            sendGif()
-          }}>
-          <input type="text" placeholder="Enter gif link!" value={inputValue} onChange={onInputChange} />
-          <button type="submit" className="cta-button submit-gif-button">Submit</button>
+    <div className="connected-container">
+      <form
+        onSubmit={event => {
+          event.preventDefault()
+          sendGif()
+        }}>
+        <input type="text" placeholder="Enter gif link!" value={inputValue} onChange={onInputChange} />
+        <button type="submit" className="cta-button submit-gif-button">Submit</button>
 
-        </form>
+      </form>
 
-        
-        <div className='gif-grid'>
-          {TEST_GIFS.map(gif => (
-            <div className='gif-item' key={gif}>
-              <img src={gif} alt={gif} />
-            </div>
-          ))}
-            
-        </div>
+
+      <div className='gif-grid'>
+        {gifList.map(gif => (
+          <div className='gif-item' key={gif}>
+            <img src={gif} alt={gif} />
+          </div>
+        ))}
+
       </div>
+    </div>
   )
-  
+
   useEffect(() => {
-    const onLoad = async() => {
+    const onLoad = async () => {
       await checkIfWalletIsConnected();
     }
     window.addEventListener('load', onLoad);
     return () => window.removeEventListener('load', onLoad)
   }, [])
+
+  const getGifList = async () => {
+    try {
+      const provider = getProvider()
+      const program = new Program(idl, programID, provider)
+      const account = await program.account.baseAccount.fetch(baseAccount.publicKey)
+
+      console.log('Got the account', account)
+      setGifList(account.gifList)
+
+    } catch (error) {
+      console.error("Error in getGifList:", error)
+    }
+  }
+  useEffect(() => {
+    if (walletAddress) {
+      console.log('Fetching GIF List...')
+      getGifList()
+    }
+  }, [walletAddress])
+
+
   return (
     <div className="App">
       <div className={walletAddress ? 'authed-container' : "container"}>
